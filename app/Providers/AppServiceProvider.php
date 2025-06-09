@@ -59,6 +59,10 @@ class AppServiceProvider extends ServiceProvider
             ->prefix('api/summary')
             ->group(base_path('routes/api/summary.php'));
 
+        Route::middleware('api')
+            ->prefix('api/log')
+            ->group(base_path('routes/api/foodlog.php'));
+
         Route::middleware('web')
             ->group(base_path('routes/web.php'));
     }

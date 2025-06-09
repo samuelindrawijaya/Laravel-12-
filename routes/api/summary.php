@@ -7,7 +7,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 
 
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'is_active'])->group(function () {
     Route::apiResource('daily-reports', DailyReportController::class)->only([
         'index', 'store', 'show'
     ]);

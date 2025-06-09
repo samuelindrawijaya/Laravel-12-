@@ -7,11 +7,13 @@ use Illuminate\Http\Request;
 
 class CheckUserIsActive
 {
-    public function handle(Request $request, Closure $next)
+    public function handle($request, Closure $next)
     {
-        if (auth()->check() && !auth()->user()->is_active) {
-            return response()->json(['message' => 'Akun Anda tidak aktif.'], 403);
-        }
+        // $user = auth('api')->user(); // pakai guard yang benar
+
+        // // // if (!$user || !$user->is_active) {
+        // //     abort(403, 'User is inactive or unauthorized');
+        // // }
 
         return $next($request);
     }

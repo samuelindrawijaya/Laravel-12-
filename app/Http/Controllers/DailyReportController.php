@@ -32,7 +32,15 @@ class DailyReportController extends Controller
 
         $user = Auth::user();
         $date = $request->date;
-
+        // Cek apakah sudah ada laporan harian untuk tanggal ini
+        if (!$date) {
+            $date = now()->format('Y-m-d');
+        } else {
+            $date = date('Y-m-d', strtotime($date));
+        }
+        if (DailyReport::where('user_id', $user->id)->whereDate('date', $date)->exists()) {
+            return response()->json(['message' => 'Report for this date already exists'], 409);
+        }
         // Ambil semua foodlog user di tanggal itu
         $logs = FoodLog::where('user_id', $user->id)
                     ->whereDate('created_at', $date)
