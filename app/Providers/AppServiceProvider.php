@@ -48,16 +48,16 @@ class AppServiceProvider extends ServiceProvider
             ->group(base_path('routes/api/test_api.php'));
 
         Route::middleware('api')
-            ->prefix('api/home')
-            ->group(base_path('routes/api/home.php'));
-
-        Route::middleware('api')
             ->prefix('api/public')
             ->group(base_path('routes/api/public.php'));
 
         Route::middleware('api')
             ->prefix('api/auth')
             ->group(base_path('routes/api/auth.php'));
+
+        Route::middleware('api')
+            ->prefix('api/summary')
+            ->group(base_path('routes/api/summary.php'));
 
         Route::middleware('web')
             ->group(base_path('routes/web.php'));

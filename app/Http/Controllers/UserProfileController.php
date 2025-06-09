@@ -34,7 +34,8 @@ class UserProfileController extends Controller
             }
         }
 
-        $fields = ['phone', 'address', 'bio', 'profile_image', 'gender', 'birthdate', 'instagram', 'linkedin', 'github', 'website'];
+        $fields = ['phone', 'address', 'bio', 'profile_image', 'gender', 'birthdate', 'instagram', 'linkedin', 'github', 'website',
+            'has_gerd', 'has_anxiety', 'is_on_diet', 'diet_type', 'personality_note', 'daily_goal_note'];
         $filledCount = collect($fields)->filter(fn($f) => !empty($profile?->$f))->count();
         $progress = round(($filledCount / count($fields)) * 100);
 
@@ -88,35 +89,34 @@ class UserProfileController extends Controller
         $request->validate([
             'avatar' => 'required|image|mimes:jpeg,png,jpg|max:2048'
         ]);
+
         if (!$request->hasFile('avatar')) {
             return response()->error('No file uploaded', 400);
         }
 
+        $user = auth()->user();
+
         if (!$user->profile) {
             return response()->error('Profile not found', 404);
         }
-        // Uncomment the following lines if you want to check if the profile image is already set
-        // if (!$user->profile->profile_image) {
-        //     return response()->error('Profile image not set', 404);
-        // }
 
-
-        $user = auth()->user();
         $file = $request->file('avatar');
-        $filename = 'avatar_' . $user->id . '.' . $file->getClientOriginalExtension();
+        $filename = 'avatar_' . $user->id . '_' . now()->timestamp . '.' . $file->getClientOriginalExtension();
 
+        // Hapus file lama jika ada
         if ($user->profile->profile_image) {
             Storage::disk('public')->delete($user->profile->profile_image);
         }
 
+        // Simpan file baru
         $path = $file->storeAs('avatars', $filename, 'public');
 
         $user->profile->update(['profile_image' => $path]);
 
         return response()->success([
-            'avatar_url' => $user->profile->profile_image
-            ? asset('storage/' . $user->profile->profile_image)
-            : asset('images/default-avatar.png'),
-        ],  'Avatar uploaded successfully');
+            'avatar_url' => asset('storage/' . $path)
+        ], 'Avatar uploaded successfully');
     }
+
+
 }

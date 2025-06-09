@@ -23,6 +23,14 @@ class UpdateProfileRequest extends FormRequest
             'linkedin'  => 'nullable|url',
             'github'    => 'nullable|url',
             'website'   => 'nullable|url',
+
+            // NEW PREFERENCES
+            'has_gerd' => 'nullable|boolean',
+            'has_anxiety' => 'nullable|boolean',
+            'is_on_diet' => 'nullable|boolean',
+            'diet_type' => 'nullable|in:none,GERD,low_fodmap,vegan,keto,custom',
+            'personality_note' => 'nullable|string|max:255',
+            'daily_goal_note' => 'nullable|string|max:255',
         ];
     }
 }
