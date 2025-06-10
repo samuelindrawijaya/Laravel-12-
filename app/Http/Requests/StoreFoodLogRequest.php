@@ -11,7 +11,7 @@ class StoreFoodLogRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true; // Authorization logic can be added here if needed
     }
 
     /**

@@ -9,11 +9,15 @@ class CheckUserIsActive
 {
     public function handle($request, Closure $next)
     {
-        // $user = auth('api')->user(); // pakai guard yang benar
+        $user = auth('api')->user();
 
-        // // // if (!$user || !$user->is_active) {
-        // //     abort(403, 'User is inactive or unauthorized');
-        // // }
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        if (!$user->is_active) {
+            return response()->json(['message' => 'User inactive'], 403);
+        }
 
         return $next($request);
     }

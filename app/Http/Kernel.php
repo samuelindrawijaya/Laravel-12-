@@ -45,7 +45,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class, // ini tambahkan untuk RBAC
         'is_active' => \App\Http\Middleware\CheckUserIsActive::class,
-        'permission' => \App\Http\Middleware\PermissionMiddleware::class, // tambahkan middleware untuk permission
+        // 'permission' => \App\Http\Middleware\PermissionMiddleware::class, // tambahkan middleware untuk permission
     ];
 }
 // This file defines the HTTP kernel for the application, which includes middleware for handling requests.

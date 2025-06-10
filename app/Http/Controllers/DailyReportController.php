@@ -20,10 +20,10 @@ class DailyReportController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'date'        => 'required|date',
-            'symptoms'    => 'nullable|string|max:255',
-            'concerns'    => 'nullable|string|max:255',
-            'notes'       => 'nullable|string',
+            'date'      => 'required|date',
+            'symptoms'  => 'nullable|string|max:255',
+            'concerns'  => 'nullable|string|max:255',
+            'notes'     => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -31,32 +31,52 @@ class DailyReportController extends Controller
         }
 
         $user = Auth::user();
-        $date = $request->date;
-        // Cek apakah sudah ada laporan harian untuk tanggal ini
-        if (!$date) {
-            $date = now()->format('Y-m-d');
-        } else {
-            $date = date('Y-m-d', strtotime($date));
-        }
+        $date = date('Y-m-d', strtotime($request->date ?? now()));
+
         if (DailyReport::where('user_id', $user->id)->whereDate('date', $date)->exists()) {
-            return response()->json(['message' => 'Report for this date already exists'], 409);
+            // return response()->json(['message' => 'Report for this date already exists'], 409);
         }
-        // Ambil semua foodlog user di tanggal itu
+
         $logs = FoodLog::where('user_id', $user->id)
-                    ->whereDate('created_at', $date)
-                    ->get();
+            ->whereDate('created_at', $date)
+            ->get();
 
         if ($logs->isEmpty()) {
             return response()->json(['message' => 'No food logs found for this date'], 404);
         }
 
-        // Gabungkan deskripsi makanan
-        $textLogs = $logs->pluck('description')->implode("\n");
+        // Format log makanan
+        $textLogs = $logs->map(function ($log) {
+            return "Waktu: {$log->meal_time} ({$log->time})\nMakanan: {$log->foods}\nGejala: {$log->symptoms}\nKekhawatiran: {$log->concerns}";
+        })->implode("\n\n");
 
-        // Kirim ke Gemini
-        $aiResult = $this->gemini->analyzeDailyLogs($textLogs);
+        // Ambil profil user
+        $profile = $user->profile;
 
-        // Simpan laporan harian
+        // Buat konteks tambahan dari profil
+        $hasGerd = $profile->has_gerd ? 'Ya' : 'Tidak';
+        $hasAnxiety = $profile->has_anxiety ? 'Ya' : 'Tidak';
+        $isOnDiet = $profile->is_on_diet ? 'Ya' : 'Tidak';
+        $dietType = $profile->diet_type;
+        $personalityNote = $profile->personality_note;
+        $dailyGoalNote = $profile->daily_goal_note;
+
+        $profileContext = <<<EOD
+        Profil Pengguna:
+        - Memiliki GERD: {$hasGerd}
+        - Mengalami kecemasan: {$hasAnxiety}
+        - Sedang diet: {$isOnDiet}
+        - Tipe diet: {$dietType}
+        - Catatan kepribadian: {$personalityNote}
+        - Catatan tujuan harian: {$dailyGoalNote}
+        EOD;
+
+        $combinedInput = $profileContext . "\n\nLog Makanan:\n" . $textLogs;
+
+        // Kirim ke AI
+        $aiResult = $this->gemini->analyzeDailyLogs($combinedInput);
+
+        // Simpan laporan
         $report = DailyReport::updateOrCreate(
             ['user_id' => $user->id, 'date' => $date],
             [
