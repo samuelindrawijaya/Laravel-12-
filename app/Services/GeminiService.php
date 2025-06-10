@@ -54,8 +54,10 @@ class GeminiService
         }
 
         $text = $response->json('candidates.0.content.parts.0.text');
-        dd($text);
 
+        $data = json_decode($text, true);
+        dd($data); // Debugging line, remove in production
+        // Jika tidak ada teks atau gagal mengurai
         if (!$text) {
             return [
                 'summary' => 'Tidak ada respons dari AI',
@@ -66,7 +68,7 @@ class GeminiService
         }
 
         try {
-            $data = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode($text, true);
             return is_array($data) ? $data : [
                 'summary' => 'Format data dari AI tidak sesuai',
                 'suggestion' => 'Periksa ulang format JSON',
