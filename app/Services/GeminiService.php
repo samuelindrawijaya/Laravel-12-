@@ -55,17 +55,11 @@ class GeminiService
 
         $text = $response->json('candidates.0.content.parts.0.text');
 
+        $text = trim($text, "\"`\njson "); // Remove extra quotes, backticks, newlines, and spaces so it can be parsed correctly
+
+        // Decode JSON
         $data = json_decode($text, true);
-        dd($data); // Debugging line, remove in production
-        // Jika tidak ada teks atau gagal mengurai
-        if (!$text) {
-            return [
-                'summary' => 'Tidak ada respons dari AI',
-                'suggestion' => 'Pastikan format prompt benar dan data tidak kosong',
-                'concern' => 'Perlu perbaikan pada permintaan analisis',
-                'score' => 0
-            ];
-        }
+        // dd($data);
 
         try {
             $data = json_decode($text, true);
