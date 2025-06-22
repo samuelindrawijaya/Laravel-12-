@@ -17,7 +17,8 @@ class DailyReport extends Model
 
     public function foodLogs()
     {
-        return $this->hasMany(FoodLog::class, 'date', 'date')->where('user_id', $this->user_id);
+        return $this->hasMany(FoodLog::class, 'user_id', 'user_id')
+            ->whereDate('created_at', $this->date);
     }
 
     public function getBadgesAttribute(): array
@@ -30,6 +31,11 @@ class DailyReport extends Model
             return ['❤️'];
         }
         return [];
+    }
+
+    public function scopeForDate($query, $date)
+    {
+        return $query->whereDate('date', $date);
     }
 }
 

@@ -30,7 +30,7 @@ class DailyReportResource extends JsonResource
                 'guts'  => $this->score >= 100,
                 'star'  => $this->score >= 100,
             ],
-            'food_logs'  => $foodLogs, // ← ini tambahan penting
+            'food_logs' => FoodLogResource::collection($this->whenLoaded('foodLogs')),
         ];
     }
 

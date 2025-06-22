@@ -7,6 +7,7 @@ use App\Services\GeminiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Resources\DailyReportResource;
 
 class DailyReportController extends Controller
 {
@@ -33,8 +34,15 @@ class DailyReportController extends Controller
         $user = Auth::user();
         $date = date('Y-m-d', strtotime($request->date ?? now()));
 
-        if (DailyReport::where('user_id', $user->id)->whereDate('date', $date)->exists()) {
-            // return response()->json(['message' => 'Report for this date already exists'], 409);
+        // Hitung laporan hari ini
+        $reportCountToday = DailyReport::where('user_id', $user->id)
+            ->whereDate('date', $today)
+            ->count();
+
+        if ($reportCountToday >= 5 || $user->geminitoken <= 0) {
+            if (DailyReport::where('user_id', $user->id)->whereDate('date', $date)->exists()) {
+               return response()->json(['message' => 'Batas harian tercapai atau token habis.'], 403);
+            }
         }
 
         $logs = FoodLog::where('user_id', $user->id)
@@ -75,57 +83,92 @@ class DailyReportController extends Controller
 
         // Kirim ke AI
         $aiResult = $this->gemini->analyzeDailyLogs($combinedInput);
+        DB::beginTransaction();
+        try {
+            // Simpan laporan
+            $report = DailyReport::updateOrCreate(
+                ['user_id' => $user->id, 'date' => $date],
+                [
+                    'symptoms'   => $request->symptoms,
+                    'concerns'   => $request->concerns,
+                    'notes'      => $request->notes,
+                    'summary'    => $aiResult['summary'] ?? null,
+                    'suggestion' => $aiResult['suggestion'] ?? null,
+                    'concern'    => $aiResult['concern'] ?? null,
+                    'score'      => $aiResult['score'] ?? null,
+                ]
+            );
+            // Kurangi token Gemini
+            $user->geminitoken = max(0, $user->geminitoken - 1); // Pastikan token tidak negatif
+            $user->save();
+            DB::commit();
 
-        // Simpan laporan
-        $report = DailyReport::updateOrCreate(
-            ['user_id' => $user->id, 'date' => $date],
-            [
-                'symptoms'   => $request->symptoms,
-                'concerns'   => $request->concerns,
-                'notes'      => $request->notes,
-                'summary'    => $aiResult['summary'] ?? null,
-                'suggestion' => $aiResult['suggestion'] ?? null,
-                'concern'    => $aiResult['concern'] ?? null,
-                'score'      => $aiResult['score'] ?? null,
-            ]
-        );
-
-        return response()->json([
-            'message' => 'Daily report saved',
-            'report'  => $report
-        ]);
+            return response()->json([
+                'message' => 'Daily report saved',
+                'report'  => $report
+            ]);
+        }
+        catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error processing AI response', 'error' => $e->getMessage()], 500);
+        }
     }
 
     public function show($id)
     {
-        $report = DailyReport::findOrFail($id);
+        $report = DailyReport::with(['foodLogs'])->findOrFail($id);
+        if (!$report) {
+            return response()->json(['message' => 'Daily report not found'], 404);
+        }
 
         // Cek apakah report ini milik user yang sedang login
         if ($report->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Optional: sertakan juga food logs untuk tanggal tersebut
-        $foodLogs = FoodLog::where('user_id', $report->user_id)
-                    ->whereDate('created_at', $report->date)
-                    ->get();
-
-        return response()->json([
-            'report' => $report,
-            'food_logs' => $foodLogs
-        ]);
+        return new DailyReportResource($report);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
-        $reports = DailyReport::where('user_id', $user->id)
-                    ->orderBy('date', 'desc')
-                    ->get();
+        // $query = DailyReport::where('user_id', $user->id);
 
-        return response()->json($reports);
+        // if ($request->has('date')) {
+        //     $query->forDate($request->get('date'));
+        //  manually overide the date filter}
+        $query = DailyReport::where('user_id', $user->id)
+        ->when($request->has('date'), function ($q) use ($request) {
+            $q->forDate($request->get('date'));
+        })->when($request->has('sort'), function ($q) use ($request) {
+            if (in_array($request->get('sort'), ['asc', 'desc'])) {
+                $q->orderBy('date', $request->get('sort'));
+            } else {
+                $q->orderBy('date', 'desc');
+            }
+        }, function ($q) {
+            $q->OrderBy('date', 'desc');
+        });
+
+        $paginated = $query->paginate($perPage);
+
+        if ($paginated->isEmpty()) {
+            return response()->json([
+                'message' => 'No daily reports found'
+            ], 404);
+        }
+
+        return DailyReportResource::collection($paginated)
+        ->additional([
+            'message' => 'List of daily reports',
+            'meta' => [
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ]
+        ]);
     }
-
 }
 

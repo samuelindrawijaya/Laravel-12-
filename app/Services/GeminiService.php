@@ -66,7 +66,7 @@ class GeminiService
             return is_array($data) ? $data : [
                 'summary' => 'Format data dari AI tidak sesuai',
                 'suggestion' => 'Periksa ulang format JSON',
-                'concern' => 'Gemini membalas dengan teks non-JSON',
+                'concern' => 'Gemini membalas dengan teks n on-JSON',
                 'score' => 0
             ];
         } catch (\JsonException $e) {
